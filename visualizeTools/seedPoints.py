@@ -19,7 +19,7 @@ def axisymmetricSeedPoints(data1, stellar_radius, num_points=50):
     Returns:
     - vertices: List of vertices for the seed points after integration.
     """
-    vertices = []
+    
     rr, theta, phi = np.meshgrid(stellar_radius * np.ones(num_points),
                              np.linspace(0,np.pi, num_points),
                              np.linspace(0, 2*np.pi, num_points))
@@ -28,7 +28,5 @@ def axisymmetricSeedPoints(data1, stellar_radius, num_points=50):
     y = rr * np.sin(theta) * np.sin(phi)
     z = rr * np.cos(theta)
     
-    print(x.shape, y.shape, z.shape)
-    vertices.append(x, y, z)
     
-    return vertices
+    return [x,y,z]
