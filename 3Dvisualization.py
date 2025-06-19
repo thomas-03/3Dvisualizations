@@ -8,6 +8,7 @@ import math
 import k3d
 import time
 import visualizeTools.utils as utils
+import visualizeTools.seedPoints as seedPoints
 
 
 def plot_3Dmovie(data1, seed_points, B, Bx, By, Bz, x0, y0, z0, ns, timeStep, init_time,output_html_name,filename_setup):
@@ -80,6 +81,9 @@ def plot_3Dmovie(data1, seed_points, B, Bx, By, Bz, x0, y0, z0, ns, timeStep, in
 
 if __name__ == '__main__':
     sys.path.append('/faculty/yyuan/codes/CoffeeGPU/python')
+
+    x, y, z = seedPoints.axisymmetricSeedPoints(data1, stellar_radius=1.0, num_points=50)
+    
     from datalib import Data
     #check what format the data file is so I can know what to tell people to put in
     #generally though I will have the first argument be the data folder

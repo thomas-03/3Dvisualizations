@@ -169,3 +169,24 @@ def eulerIntegrate(data1, x, y, z, ns, B, Bx, By, Bz):
             break
     vertices=np.transpose(np.array([x,y,z]))
     return vertices
+
+def dataObjectToDict(data1):
+    """
+    Convert a data object to a dictionary format.
+    
+    Parameters:
+    - data1: Data object containing magnetic field information.
+    
+    Returns:
+    - data_dict: Dictionary representation of the data object.
+    """
+    data_dict = {
+        'Bx': data1.Bx,
+        'By': data1.By,
+        'Bz': data1.Bz,
+        'Ex': data1.Ex,
+        'Ey': data1.Ey,
+        'Ez': data1.Ez,
+        'conf': data1.conf
+    }
+    return data_dict
