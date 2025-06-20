@@ -80,23 +80,29 @@ def plot_3Dmovie(data1, seed_points, B, Bx, By, Bz, x0, y0, z0, ns, timeStep, in
         f.write(data)
 
 if __name__ == '__main__':
-    sys.path.append('/faculty/yyuan/codes/CoffeeGPU/python')
 
-    from datalib import Data
-    #check what format the data file is so I can know what to tell people to put in
-    #generally though I will have the first argument be the data folder
     input_folder = str(sys.argv[1])
-    #the second argument will be whatever they want the output html file to be called
     output_html_name = str(sys.argv[2])
 
-    data1 = Data(input_folder)
+    data = []
+    dataInfo = {}
+
+    for file in os.listdir(input_folder):
+        if file.endswith('.h5'):
+            print('Loading data from:', file)
+            data1 = h5py.File(os.path.join(input_folder, file), 'r')
+            data.append(data1)
+        elif file.endswith('.toml'):
+            print('Loading configuration from:', file)
+            dataInfo = utils.readTomlFile(os.path.join(input_folder, file))
 
     print('Data loaded successfully.')
+    data = utils.formatDataArray(data, dataInfo)
 
 
-
-    x, y, z = seedPoints.axisymmetricSeedPoints(data1, stellar_radius=1.0, num_points=50)
-    print(x.shape, y.shape, z.shape)
-
-    #ns= number of steps you want to take???
+    xx, yy, zz = seedPoints.axisymmetricSeedPoints(data1, stellar_radius=1.0, num_points=50)
+    x = xx[:,0,0]
+    y = yy[0,:,0]
+    z = zz[0,0,:]
+    
 

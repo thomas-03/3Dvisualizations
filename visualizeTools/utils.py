@@ -20,16 +20,16 @@ def find_nearest_value(array, value):
     idx = np.argmin(np.abs(array - value))
     return array[idx]
 
-def find_idx_above_below(data1, x,y,z):
-    nz,ny,nx = data1.Bx.shape
+def find_idx_above_below(dataInfo, x,y,z):
+    nz,ny,nx = dataInfo.conf['grid_shape']
 
-    xmin=data1.conf['lower'][0]
-    ymin=data1.conf['lower'][1]
-    zmin=data1.conf['lower'][2]
+    xmin=dataInfo.conf['lower'][0]
+    ymin=dataInfo.conf['lower'][1]
+    zmin=dataInfo.conf['lower'][2]
 
-    sizex=data1.conf['size'][0]
-    sizey=data1.conf['size'][1]
-    sizez=data1.conf['size'][2]
+    sizex=dataInfo.conf['size'][0]
+    sizey=dataInfo.conf['size'][1]
+    sizez=dataInfo.conf['size'][2]
 
     xmax=xmin+sizex
     ymax=ymin+sizey
@@ -88,105 +88,86 @@ def find_idx_above_below(data1, x,y,z):
         
     return lx, rx, ly, ry, lz, rz
 
-#3D Linear Interpolation of the array value of a point
-def interpolate(data1, h, val_array, x, y, z):
-    nz,ny,nx = data1.Bx.shape
 
-    xmin=data1.conf['lower'][0]
-    ymin=data1.conf['lower'][1]
-    zmin=data1.conf['lower'][2]
 
-    sizex=data1.conf['size'][0]
-    sizey=data1.conf['size'][1]
-    sizez=data1.conf['size'][2]
-
-    xmax=xmin+sizex
-    ymax=ymin+sizey
-    zmax=zmin+sizez
-
-    dx=sizex/nx
-    dy=sizey/ny
-    dz=sizez/nz
-
-    #has the different x, y, and z values that are possible
-    x0=np.arange(xmin,xmax,dx)
-    y0=np.arange(ymin,ymax,dy)
-    z0=np.arange(zmin,zmax,dz)
-
-    val_array = np.asarray(val_array)
-    lx, rx, ly, ry, lz, rz = find_idx_above_below(data1,x,y,z)
-    
-    c000 = val_array[lz,ly,lx]
-    c100 = val_array[lz,ly,rx]
-    c110 = val_array[lz,ry,rx]
-    c010 = val_array[lz,ry,lx]
-    
-    c001 = val_array[rz,ly,lx]
-    c011 = val_array[rz,ry,lx]
-    c111 = val_array[rz,ry,rx]
-    c101 = val_array[rz,ly,rx]
-    
-    return c000 *((1-h)**3) + (c100+c010+c001)*((1-h)**2)*h + (c101+c011+c110)*(1-h)*(h**2) + c111*(h**3)
-    
-
-def eulerIntegrate(data1, x, y, z, ns, B, Bx, By, Bz):
-    nz,ny,nx = data1.Bx.shape
-
-    xmin=data1.conf['lower'][0]
-    ymin=data1.conf['lower'][1]
-    zmin=data1.conf['lower'][2]
-
-    sizex=data1.conf['size'][0]
-    sizey=data1.conf['size'][1]
-    sizez=data1.conf['size'][2]
-
-    xmax=xmin+sizex
-    ymax=ymin+sizey
-    zmax=zmin+sizez
-
-    dx=sizex/nx
-    dy=sizey/ny
-    dz=sizez/nz
-
-    #has the different x, y, and z values that are possible
-    x0=np.arange(xmin,xmax,dx)
-    y0=np.arange(ymin,ymax,dy)
-    z0=np.arange(zmin,zmax,dz)
-
-    for i in range(0,ns):
-        B0= interpolate(data1,dx,B,x[i],y[i],z[i])
-        
-        x.append(x[i] + (interpolate(data1,dx,Bx,x[i],y[i],z[i])*dx)/B0)
-        
-        y.append(y[i] + (interpolate(data1,dy,By,x[i],y[i],z[i])*dy)/B0)
-        
-        z.append(z[i] + (interpolate(data1,dz,Bz,x[i],y[i],z[i])*dz)/B0)
-            
-        if(x[i+1]<=xmin or x[i+1]>=xmax or y[i+1]<=ymin or y[i+1]>=ymax or z[i+1]<=zmin or z[i+1]>=zmax):
-            x.pop()
-            y.pop()
-            z.pop()
-            break
-    vertices=np.transpose(np.array([x,y,z]))
-    return vertices
-
-def dataObjectToDict(data1):
+def readTomlFile(filename):
     """
-    Convert a data object to a dictionary format.
+    Reads a TOML file and returns its content as a dictionary.
     
     Parameters:
-    - data1: Data object containing magnetic field information.
+    - filename: Path to the TOML file.
     
     Returns:
-    - data_dict: Dictionary representation of the data object.
+    - Dictionary containing the TOML file content.
     """
-    data_dict = {
-        'Bx': data1.Bx,
-        'By': data1.By,
-        'Bz': data1.Bz,
-        'Ex': data1.Ex,
-        'Ey': data1.Ey,
-        'Ez': data1.Ez,
-        'conf': data1.conf
-    }
-    return data_dict
+    try:
+        with open(filename, 'r') as f:
+            return toml.load(f)
+    except FileNotFoundError:
+        print(f"Error: The file {filename} does not exist.")
+        sys.exit(1)
+    except toml.TomlDecodeError as e:
+        print(f"Error decoding TOML file {filename}: {e}")
+        sys.exit(1)
+
+def formatDataArray(dataArr, dataInfo):
+    """
+    Formats the data array by converting HDF5 data to NumPy arrays and flipping them if necessary.
+    
+    Parameters:
+    - dataArr: List of dictionaries containing HDF5 data.
+    - dataInfo: Dictionary containing metadata about the data.
+    
+    Returns:
+    - List of dictionaries with formatted NumPy arrays.
+    """
+    formatted_data = []
+    
+    for data in dataArr:
+        numpy_data = h5ToNumpy(data)
+        formatted_data.append(numpy_data)
+    
+    return flipArrays(formatted_data, dataInfo)
+
+def flipArrays(dataArr,dataInfo):
+    """
+    Flips the arrays in the data dictionary such that the x and z axes are swapped if necessary.
+    
+    Parameters:
+    - data: Dictionary containing arrays to be flipped.
+    
+    Returns:
+    - Dictionary with flipped arrays.
+    """
+    #use the very first data file to determine the grid shape
+    data = dataArr[0]
+    nx, ny, nz = dataInfo['N']
+
+    if 'grid_shape' not in dataInfo:
+        gx, gy, gz = data[list(data.keys())[0]].shape
+        dataInfo['grid_shape'] = (nx, ny, nz)
+    else:
+        gx, gy, gz = dataInfo['grid_shape']
+    
+
+    if ((nx<nz) and not(gx<gz)) or ((nx>=nz) and not(gx>=gz)):
+        for i in range(len(dataArr)):
+            for key in list(dataArr[i].keys()):
+                dataArr[i][key] = dataArr[i][key].T
+            
+    return dataArr
+
+def h5ToNumpy(data):
+    """
+    Converts HDF5 data to NumPy arrays.
+    
+    Parameters:
+    - data: HDF5 data object.
+    
+    Returns:
+    - Dictionary with NumPy arrays.
+    """
+    numpy_data = {}
+    for key in data.keys():
+        numpy_data[key] = np.array(data[key])
+    return numpy_data
